@@ -1,0 +1,143 @@
+﻿@page "/products"
+@inject ApplicationDbContext DbContext
+
+<h3>Products</h3>
+
+<!-- Product List -->
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in products)
+        {
+            <tr>
+                <td>@product.Name</td>
+                <td>@product.Price</td>
+                <td>
+                    <button @onclick="() => EditProduct(product.Id)">Edit</button>
+                    <button @onclick="() => DeleteProduct(product.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button @onclick="AddProduct">Add Product</button>
+
+<!-- Add/Edit Product Form -->
+@if (isEdit)
+{
+    <h4>Edit Product</h4>
+}
+else
+{
+    <h4>Add Product</h4>
+}
+
+<form @onsubmit="HandleSubmit">
+    <div class="form-group">
+        <label>Name:</label>
+        <input type="text" @bind="product.Name" />
+    </div>
+    <div class="form-group">
+        <label>Price:</label>
+        <input type="number" @bind="product.Price" />
+    </div>
+    <button type="submit">Save</button>
+</form>
+
+@code {
+    private List<Product> products;
+    private Product product = new();
+    private bool isEdit = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await DbContext.Products.ToListAsync();
+    }
+
+    private void AddProduct()
+    {
+        product = new Product();
+        isEdit = false;
+    }
+
+    private void EditProduct(int id)
+    {
+        product = products.FirstOrDefault(p => p.Id == id);
+        isEdit = true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (isEdit)
+        {
+            DbContext.Products.Update(product);
+        }
+        else
+        {
+            DbContext.Products.Add(product);
+        }
+        await DbContext.SaveChangesAsync();
+        products = await DbContext.Products.ToListAsync();
+    }
+
+    private async void DeleteProduct(int id)
+    {
+        var productToDelete = await DbContext.Products.FindAsync(id);
+        if (productToDelete != null)
+        {
+            DbContext.Products.Remove(productToDelete);
+            await DbContext.SaveChangesAsync();
+            products = await DbContext.Products.ToListAsync();
+        }
+    }
+}
+
+
+@page "/products"
+
+<h3>Products</h3>
+
+<table id="productsTable" class="display">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in products)
+        {
+            <tr>
+                <td>@product.Name</td>
+                <td>@product.Price</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Product> products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await DbContext.Products.ToListAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize DataTables after first render
+            JSRuntime.InvokeVoidAsync("$('#productsTable').DataTable");
+        }
+        return base.OnAfterRenderAsync(firstRender);
+    }
+}
